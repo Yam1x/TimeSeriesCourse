@@ -3,7 +3,8 @@ import pandas as pd
 import math
 import cv2
 import imutils
-from google.colab.patches import cv2_imshow
+import matplotlib.pyplot as plt
+#from google.colab.patches import cv2_imshow
 
 
 class Image2TimeSeries:
@@ -32,7 +33,20 @@ class Image2TimeSeries:
         prep_img: image after preprocessing
         """
 
-        # INSERT YOUR CODE
+        if len(img.shape) == 3:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        inverted_img = cv2.bitwise_not(img)
+
+        blurred_img = cv2.GaussianBlur(inverted_img, (5, 5), 0)
+
+        _, binary_img = cv2.threshold(blurred_img, 100, 255, cv2.THRESH_BINARY)
+
+        kernel = np.ones((5, 5), np.uint8)
+        eroded_img = cv2.erode(binary_img, kernel, iterations=1)
+        dilated_img = cv2.dilate(eroded_img, kernel, iterations=1)
+
+        prep_img = cv2.medianBlur(dilated_img, 5)
 
         return prep_img
 
@@ -145,26 +159,26 @@ class Image2TimeSeries:
         return edge_coordinates
 
 
-    def _img_show(self, img: np.ndarray, contour: np.ndarray, edge_coordinates: list[np.ndarray], center: tuple[float, float]) -> None:
-        """
-        Draw the raw image with contour, center of the shape on the image and rais from starting center
-
-        Parameters
-        ----------
-        img: raw image
-        contour: object contour
-        edge_coordinates: contour points
-        center: object center
-        """
-
-        cv2.drawContours(img, [contour], -1, (0, 255, 0), 6)
-        cv2.circle(img, center, 7, (255, 255, 255), -1)
-        cv2.putText(img, "center", (center[0]-20, center[1]-20),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 6)
-        for i in range(len(edge_coordinates)):
-            cv2.drawContours(img, np.array([[center, edge_coordinates[i]]]), -1, (255, 0, 255), 4)
-
-        cv2_imshow(imutils.resize(img, width=200))
+    def _img_show(self, img: np.ndarray, contour: np.ndarray,
+              edge_coordinates: list[np.ndarray], center: tuple[float, float]) -> None:
+        
+        if img.ndim == 2:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    
+        cv2.drawContours(img, [contour], -1, (0, 255, 0), 2)
+        cv2.circle(img, center, 5, (255, 255, 255), -1)
+        cv2.putText(img, "center", (center[0]-20, center[1]-10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+    
+        for pt in edge_coordinates:
+            cv2.line(img, center, tuple(pt), (255, 0, 255), 1)
+    
+        vis = imutils.resize(img, width=200)
+        vis = cv2.cvtColor(vis, cv2.COLOR_BGR2RGB)
+        plt.figure(figsize=(3,3))
+        plt.imshow(vis)
+        plt.axis('off')
+        plt.show()
 
 
     def convert(self, img: np.ndarray, is_visualize: bool = False) -> np.ndarray:
